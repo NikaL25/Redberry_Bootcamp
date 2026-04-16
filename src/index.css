@@ -1,0 +1,19 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  margin: 0;
+  font-family: 'Manrope', sans-serif;
+  background-color: #fafbff;
+  color: #111827;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.hero-gradient {
+  background: linear-gradient(108deg, #5d5fef 0%, #a5a6f6 45%, #ff7eb3 100%);
+}
