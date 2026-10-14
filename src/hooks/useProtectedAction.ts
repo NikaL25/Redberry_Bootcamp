@@ -3,7 +3,7 @@ import { useApp } from '../context/AppContext'
 export function useProtectedAction() {
   const { isAuthenticated, user, openModal, showToast } = useApp()
 
-  const ensureAuth = () => {
+  const ensureAuth = (): boolean => {
     if (!isAuthenticated) {
       openModal('login')
       return false
@@ -11,7 +11,7 @@ export function useProtectedAction() {
     return true
   }
 
-  const ensureCompleteProfile = () => {
+  const ensureCompleteProfile = (): boolean => {
     if (!ensureAuth()) return false
     if (!user?.profileComplete) {
       showToast('Please complete your profile to enroll in courses', 'error')

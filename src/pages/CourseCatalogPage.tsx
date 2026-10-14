@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { catalogApi } from '../api/services'
 import { formatCurrency } from '../utils/format'
+import type { Category, Course, Instructor, Topic } from '../types'
 
 import IconStar from '../assets/IconStar.png'
 import IconDev from '../assets/IconDev.png'
@@ -29,11 +30,11 @@ const categoryIcons = {
 
 export default function CourseCatalogPage() {
   const [searchParams, setSearchParams] = useSearchParams()
-  const [coursesData, setCoursesData] = useState({ data: [], meta: {} })
-  const [categories, setCategories] = useState([])
-  const [topics, setTopics] = useState([])
-  const [instructors, setInstructors] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [coursesData, setCoursesData] = useState<{ data: Course[]; meta: { last_page?: number } }>({ data: [], meta: {} })
+  const [categories, setCategories] = useState<Category[]>([])
+  const [topics, setTopics] = useState<Topic[]>([])
+  const [instructors, setInstructors] = useState<Instructor[]>([])
+  const [loading, setLoading] = useState<boolean>(true)
 
   const page = Number(searchParams.get('page') || 1)
   const sort = searchParams.get('sort') || 'newest'
@@ -94,7 +95,7 @@ export default function CourseCatalogPage() {
     loadCatalogData()
   }, [page, sort, selectedCategories, selectedInstructors, selectedTopics])
 
-  const toggleFilter = (key, value) => {
+  const toggleFilter = (key: string, value: number | string) => {
     const current = new Set(
       (searchParams.get(key) || '').split(',').filter(Boolean)
     )

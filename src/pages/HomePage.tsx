@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { catalogApi } from '../api/services'
 import { useApp } from '../context/AppContext'
 import { formatCurrency } from '../utils/format'
+import type { Course, Enrollment, Instructor } from '../types'
 
 import img1 from '../assets/img_1.png'
 import img2 from '../assets/img_2.png'
@@ -19,11 +20,11 @@ import rectInactive from '../assets/Rectangle-non-active.png'
 import IconStar from '../assets/IconStar.png'
 
 export default function HomePage() {
-  const [featured, setFeatured] = useState([])
-  const [inProgress, setInProgress] = useState([])
-  const [instructors, setInstructors] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [slide, setSlide] = useState(0)
+  const [featured, setFeatured] = useState<Course[]>([])
+  const [inProgress, setInProgress] = useState<Enrollment[]>([])
+  const [instructors, setInstructors] = useState<Instructor[]>([])
+  const [loading, setLoading] = useState<boolean>(true)
+  const [slide, setSlide] = useState<number>(0)
 
   const { isAuthenticated, openModal, showToast } = useApp()
 

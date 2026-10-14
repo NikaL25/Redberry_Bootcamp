@@ -9,6 +9,8 @@ const loginSchema = z.object({
   password: z.string().min(3),
 })
 
+type LoginValues = z.infer<typeof loginSchema>
+
 const registerSchema = z
   .object({
     username: z.string().min(3),
@@ -22,15 +24,17 @@ const registerSchema = z
     path: ['password_confirmation'],
   })
 
+type RegisterValues = z.infer<typeof registerSchema>
+
 export function LoginModal() {
   const { modals, closeModal, openModal, login, showToast, normalizeApiError } = useApp()
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm({ resolver: zodResolver(loginSchema) })
+  } = useForm<LoginValues>({ resolver: zodResolver(loginSchema) })
 
-  const onSubmit = async (values) => {
+  const onSubmit = async (values: LoginValues) => {
     try {
       await login(values)
       closeModal('login')
@@ -72,15 +76,15 @@ export function RegisterModal() {
     handleSubmit,
     watch,
     formState: { errors, isSubmitting },
-  } = useForm({ resolver: zodResolver(registerSchema) })
+  } = useForm<RegisterValues>({ resolver: zodResolver(registerSchema) })
 
-  const avatar = watch('avatar')?.[0]
+  const avatarFile = (watch('avatar') as FileList | undefined)?.[0] as File | undefined
 
-  const onSubmit = async (values) => {
+  const onSubmit = async (values: RegisterValues) => {
     try {
       await signUp({
         ...values,
-        avatar: values.avatar?.[0],
+        avatar: (values.avatar as FileList | undefined)?.[0],
       })
       closeModal('register')
       showToast('Registration successful')
@@ -105,7 +109,7 @@ export function RegisterModal() {
         />
         {errors.password_confirmation && <p className="text-sm text-red-500">{errors.password_confirmation.message}</p>}
         <input accept=".jpg,.jpeg,.png,.webp" className="w-full rounded-lg border p-3" type="file" {...register('avatar')} />
-        {avatar && <p className="text-sm text-gray-500">Selected avatar: {avatar.name}</p>}
+        {avatarFile && <p className="text-sm text-gray-500">Selected avatar: {avatarFile.name}</p>}
         <button className="w-full rounded-lg bg-brand-primary py-3 font-bold text-white" disabled={isSubmitting} type="submit">
           {isSubmitting ? 'Creating account...' : 'Sign Up'}
         </button>

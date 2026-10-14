@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useApp } from '../../context/AppContext'
 import { formatCurrency } from '../../utils/format'
+import type { Enrollment } from '../../types'
 
 import IconStar from '../../assets/IconStar.png'
 import CalendarIcon from '../../assets/boxicons_calendar.png'
@@ -12,9 +13,11 @@ import IconLoc from '../../assets/IconLoc.png'
 export default function EnrolledSidebar() {
   const { modals, closeModal, enrollments } = useApp()
 
+  const items = enrollments as Enrollment[]
+
   if (!modals.enrolledSidebar) return null
 
-  const totalCost = enrollments.reduce(
+  const totalCost = items.reduce(
     (acc, item) =>
       acc + Number(item?.finalPrice ?? item?.course?.basePrice ?? 0),
     0
@@ -32,7 +35,7 @@ export default function EnrolledSidebar() {
           <h3 className="text-[40px] ml-6 font-semibold ">Enrolled Courses</h3>
          
           <p className='text-[#0A0A0A] text-[16px] ml-[150px]'>
-            Total Enrollments {enrollments.length}
+            Total Enrollments {items.length}
           </p>
           <button
             className="font-bold text-gray-500"
@@ -42,7 +45,7 @@ export default function EnrolledSidebar() {
           </button>
         </div>
 
-        {enrollments.length === 0 ? (
+        {items.length === 0 ? (
           <div className="rounded-xl border border-dashed p-6 text-center">
             <p className="mb-4 text-gray-600">
               Your learning journey starts here! Browse courses to get started.
@@ -58,7 +61,7 @@ export default function EnrolledSidebar() {
           </div>
         ) : (
           <div className="space-y-5 ml-10">
-            {enrollments.map((item) => {
+            {items.map((item) => {
             
               const instructorName = item.course?.instructor?.fullName || item.course?.instructor?.name || 'Unknown Instructor';
               const rating = Number(item.course?.avgRating ?? 0).toFixed(1);
@@ -167,7 +170,7 @@ export default function EnrolledSidebar() {
             {/* SUMMARY */}
             <div className="rounded-xl bg-gray-50 p-4 w-[623px]">
               <p className="text-sm font-semibold">
-                Total enrollments: {enrollments.length}
+                Total enrollments: {items.length}
               </p>
               <p className="text-sm font-semibold">
                 Total amount: {formatCurrency(totalCost)}

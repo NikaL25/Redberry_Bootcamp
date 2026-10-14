@@ -31,7 +31,7 @@ export default function ProfileModal() {
     reset,
     setValue,
     formState: { errors, isSubmitting },
-  } = useForm({ 
+  } = useForm({
     resolver: zodResolver(schema)
   })
 
@@ -45,7 +45,7 @@ export default function ProfileModal() {
     }
   }, [user, reset])
 
-  const onSubmit = async (values) => {
+  const onSubmit = async (values: { full_name: string; mobile_number: string; age: number; avatar?: FileList }) => {
     try {
       await updateProfile({ ...values, avatar: values.avatar?.[0] })
       await refreshMe()
@@ -65,9 +65,9 @@ export default function ProfileModal() {
 
         <div className="flex items-center gap-4 mb-8">
   <div className="relative">
-    <img 
-      src={user?.avatar || 'https://via.placeholder.com/80'} 
-      alt="Profile" 
+    <img
+      src={user?.avatar || 'https://via.placeholder.com/80'}
+      alt="Profile"
       className="w-20 h-20 rounded-full object-cover border-2 border-white shadow-sm"
     />
     <div className="absolute bottom-1 right-1 w-4 h-4 bg-green-500 border-2 border-white rounded-full"></div>
@@ -86,10 +86,10 @@ export default function ProfileModal() {
           <div className="relative">
             <label className="block text-sm font-semibold text-gray-700 mb-1.5 ml-1">Full Name</label>
             <div className="relative">
-              <input 
-                className={inputBaseStyles} 
-                placeholder="Username" 
-                {...register('full_name')} 
+              <input
+                className={inputBaseStyles}
+                placeholder="Username"
+                {...register('full_name')}
               />
               <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
                 <img src={IconWrite} alt="Edit" className="h-5 w-5 object-contain opacity-40" />
@@ -101,10 +101,10 @@ export default function ProfileModal() {
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1.5 ml-1">Email</label>
             <div className="relative">
-              <input 
-                className={`${inputBaseStyles} bg-gray-50 border-gray-200 cursor-not-allowed`} 
-                disabled 
-                value={user?.email || 'Email@gmail.com'} 
+              <input
+                className={`${inputBaseStyles} bg-gray-50 border-gray-200 cursor-not-allowed`}
+                disabled
+                value={user?.email || 'Email@gmail.com'}
               />
               <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
                 <img src={IconComplete} alt="Complete" className="h-5 w-5 object-contain opacity-40" />
@@ -116,20 +116,21 @@ export default function ProfileModal() {
             <div className="col-span-8">
               <label className="block text-sm font-semibold text-gray-700 mb-1.5 ml-1">Mobile Number</label>
               <div className="relative">
-                <input 
-                  className={inputBaseStyles} 
-                  placeholder="+995 599209820" 
-                  {...register('mobile_number')} 
+                <input
+                  className={inputBaseStyles}
+                  placeholder="+995 599209820"
+                  {...register('mobile_number')}
                 />
                 <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
                   <img src={IconComplete} alt="Complete" className="h-5 w-5 object-contain opacity-40" />
                 </div>
               </div>
+              {errors.mobile_number && <p className="mt-1 text-xs text-red-500">{errors.mobile_number.message}</p>}
             </div>
             <div className="col-span-4">
               <label className="block text-sm font-semibold text-gray-700 mb-1.5 ml-1">Age</label>
               <div className="relative">
-                <select 
+                <select
                   className={`${inputBaseStyles} appearance-none pr-10`}
                   {...register('age')}
                 >
@@ -138,15 +139,16 @@ export default function ProfileModal() {
                   ))}
                 </select>
                 <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
-                  <span className="text-[10px]">▼</span> 
+                  <span className="text-[10px]">▼</span>
                 </div>
               </div>
+              {errors.age && <p className="mt-1 text-xs text-red-500">{errors.age.message}</p>}
             </div>
           </div>
 
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1.5 ml-1">Upload Avatar</label>
-            <div 
+            <div
               className={`relative border-2 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center transition-colors ${
                 dragActive ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 bg-white'
               }`}
@@ -165,10 +167,10 @@ export default function ProfileModal() {
                 Drag and drop or <span className="text-indigo-600 underline cursor-pointer">Upload file</span>
               </p>
               <p className="text-xs text-gray-400 mt-1 uppercase tracking-wider">JPG, PNG or WEBP</p>
-              
-              <input 
-                type="file" 
-                className="hidden" 
+
+              <input
+                type="file"
+                className="hidden"
                 accept=".jpg,.jpeg,.png,.webp"
                 onChange={(e) => setValue('avatar', e.target.files)}
                 id="avatar-upload"
@@ -177,9 +179,9 @@ export default function ProfileModal() {
             </div>
           </div>
 
-          <button 
-            className="w-full bg-[#5D57E6] hover:bg-[#4C47C4] text-white py-4 rounded-xl font-bold text-lg transition-all shadow-md active:scale-[0.98] disabled:opacity-70 mt-4" 
-            disabled={isSubmitting} 
+          <button
+            className="w-full bg-[#5D57E6] hover:bg-[#4C47C4] text-white py-4 rounded-xl font-bold text-lg transition-all shadow-md active:scale-[0.98] disabled:opacity-70 mt-4"
+            disabled={isSubmitting}
             type="submit"
           >
             {isSubmitting ? 'Updating...' : 'Update Profile'}

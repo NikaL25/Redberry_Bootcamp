@@ -1,4 +1,14 @@
-export default function Modal({ isOpen, onClose, title, children, canClose = true }) {
+import type { ReactNode } from 'react'
+
+interface ModalProps {
+  isOpen: unknown
+  onClose: () => void
+  title?: ReactNode
+  children: ReactNode
+  canClose?: boolean
+}
+
+export default function Modal({ isOpen, onClose, title, children, canClose = true }: ModalProps) {
   if (!isOpen) return null
 
   const handleOverlayClick = () => {

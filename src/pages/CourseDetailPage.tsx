@@ -5,6 +5,7 @@ import { useApp } from '../context/AppContext'
 import { useProtectedAction } from '../hooks/useProtectedAction'
 import Modal from '../components/ui/Modal'
 import { formatCurrency } from '../utils/format'
+import type { Course, SessionTypeItem, TimeSlotItem, WeeklyScheduleItem } from '../types'
 
 import CalendarIcon from '../assets/boxicons_calendar.png'
 import IconStar from '../assets/IconStar.png'
@@ -37,51 +38,81 @@ export default function CourseDetailPage() {
   const { showToast, refreshEnrollments, modals, openModal, closeModal } = useApp()
   const { ensureAuth, ensureCompleteProfile } = useProtectedAction()
 
-  const [course, setCourse] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [weeklySchedules, setWeeklySchedules] = useState([])
-  const [timeSlots, setTimeSlots] = useState([])
-  const [sessionTypes, setSessionTypes] = useState([])
+  const [course, setCourse] = useState<(Course & { enrollment?: any }) | null>(null)
+  const [loading, setLoading] = useState<boolean>(true)
+  const [weeklySchedules, setWeeklySchedules] = useState<WeeklyScheduleItem[]>([])
+  const [timeSlots, setTimeSlots] = useState<TimeSlotItem[]>([])
+  const [sessionTypes, setSessionTypes] = useState<SessionTypeItem[]>([])
   
-  const [selectedWeekly, setSelectedWeekly] = useState('')
-  const [selectedSlot, setSelectedSlot] = useState('')
-  const [selectedSession, setSelectedSession] = useState(null)
-  
-  const [openWeekly, setOpenWeekly] = useState(false)
-  const [openSlot, setOpenSlot] = useState(false)
+  const [selectedSession, setSelectedSession] = useState<SessionTypeItem | null>(null)
+  const [selectedSlot, setSelectedSlot] = useState<number | string>('')
+  const [selectedWeekly, setSelectedWeekly] = useState<number | string>('')
 
+  // Exact CourseSchedule row matching all three choices (resolved last).
+  const [finalSchedule, setFinalSchedule] = useState<any>(null)
+  
+  const [openWeekly, setOpenWeekly] = useState<boolean>(false)
+  const [openSlot, setOpenSlot] = useState<boolean>(false)
+
+  const selectedSessionType = selectedSession?.sessionType || selectedSession?.name || ''
+
+  // Step 1: load distinct session types first.
   useEffect(() => {
     const loadCourseDetails = async () => {
       const { data } = await catalogApi.courseDetails(id)
       setCourse(data.data)
-      const weekly = await catalogApi.weeklySchedules(id)
-      setWeeklySchedules(weekly.data.data ?? [])
+      const sessions = await catalogApi.sessionTypes(id)
+      setSessionTypes(sessions.data.data ?? [])
       setLoading(false)
     }
     loadCourseDetails()
   }, [id])
 
+  // Step 2: time slots filtered by chosen session type.
   useEffect(() => {
-    if (!selectedWeekly) return
+    if (!selectedSessionType) return
     const loadTimeSlots = async () => {
-      const { data } = await catalogApi.timeSlots(id, selectedWeekly)
+      const { data } = await catalogApi.timeSlots(id, { sessionType: selectedSessionType })
       setTimeSlots(data.data ?? [])
       setSelectedSlot('')
-      setSessionTypes([])
-      setSelectedSession(null)
+      setSelectedWeekly('')
+      setWeeklySchedules([])
+      setFinalSchedule(null)
     }
     loadTimeSlots()
-  }, [id, selectedWeekly])
+  }, [id, selectedSessionType])
 
+  // Step 3: weekly schedules filtered by session type + time slot.
   useEffect(() => {
-    if (!selectedWeekly || !selectedSlot) return
-    const loadSessionTypes = async () => {
-      const { data } = await catalogApi.sessionTypes(id, selectedWeekly, selectedSlot)
-      setSessionTypes(data.data ?? [])
-      setSelectedSession(null)
+    if (!selectedSessionType || !selectedSlot) return
+    const loadWeekly = async () => {
+      const { data } = await catalogApi.weeklySchedules(id, {
+        sessionType: selectedSessionType,
+        timeSlotId: selectedSlot,
+      })
+      setWeeklySchedules(data.data ?? [])
+      setSelectedWeekly('')
+      setFinalSchedule(null)
     }
-    loadSessionTypes()
-  }, [id, selectedSlot, selectedWeekly])
+    loadWeekly()
+  }, [id, selectedSessionType, selectedSlot])
+
+  // Resolve the exact CourseSchedule row once all three steps are chosen.
+  useEffect(() => {
+    if (!selectedSessionType || !selectedSlot || !selectedWeekly) {
+      setFinalSchedule(null)
+      return
+    }
+    const loadExact = async () => {
+      const { data } = await catalogApi.sessionTypes(id, {
+        sessionType: selectedSessionType,
+        weeklyScheduleId: selectedWeekly,
+        timeSlotId: selectedSlot,
+      })
+      setFinalSchedule(data.data?.[0] ?? null)
+    }
+    loadExact()
+  }, [id, selectedSessionType, selectedSlot, selectedWeekly])
 
   const handleRetake = async () => {
     try {
@@ -92,18 +123,18 @@ export default function CourseDetailPage() {
       setCourse(detail.data.data)
       
       showToast('Course reset. You can now enroll again!')
-    } catch (error) {
+    } catch (error: any) {
       console.error(error)
       showToast('Could not reset course. Please try again.', 'error')
     }
   }
   const enrollment = course?.enrollment
-  const sessionModifier = Number(selectedSession?.priceModifier ?? 0)
+  const sessionModifier = Number(finalSchedule?.priceModifier ?? selectedSession?.priceModifier ?? 0)
   const totalPrice = Number(course?.basePrice ?? 0) + sessionModifier
 
   const selectedScheduleId = useMemo(
-    () => selectedSession?.courseScheduleId || selectedSession?.id,
-    [selectedSession]
+    () => finalSchedule?.courseScheduleId || finalSchedule?.id,
+    [finalSchedule]
   )
   
   const displayRating = useMemo(() => {
@@ -113,18 +144,18 @@ export default function CourseDetailPage() {
   const categoryName = course?.category?.name || 'Development'
   const icon = categoryIcons[categoryName] || IconDev
 
-  const canEnroll = Boolean(selectedWeekly && selectedSlot && selectedSession)
+  const canEnroll = Boolean(selectedSession && selectedSlot && selectedWeekly && selectedScheduleId)
 
-  const handleEnroll = async (force = false) => {
+  const handleEnroll = async (force: boolean = false) => {
     if (!ensureAuth()) return
     if (!ensureCompleteProfile()) return
 
     if (!canEnroll) {
-      showToast('Please select weekly schedule, time slot and session type', 'error')
+      showToast('Please select session type, time slot and weekly schedule', 'error')
       return
     }
 
-    if ((selectedSession.availableSeats ?? 1) <= 0) {
+    if ((finalSchedule?.availableSeats ?? selectedSession.availableSeats ?? 1) <= 0) {
       showToast('This session is fully booked', 'error')
       return
     }
@@ -209,42 +240,21 @@ export default function CourseDetailPage() {
       <aside className="mt-[55px] w-[530px] rounded-2xl border p-6 shadow-soft self-start">
         {!enrollment ? (
           <>
-            <div className="mb-5">
-              <div
-                className="cursor-pointer flex items-center gap-2"
-                onClick={() => setOpenWeekly(!openWeekly)}
-              >
-                <img src={IconThirdStep} className="object-contain" />
-                <h3 className="text-[24px] font-extrabold text-[#8A8A8A] hover:text-[#130E67] transition-colors">
-                  Select Weekly Schedule
-                </h3>
-              </div>
-              {openWeekly && (
-                <div className="border rounded-lg mt-2 bg-white overflow-hidden shadow-sm">
-                  {weeklySchedules.length > 0 ? weeklySchedules.map((item) => (
-                    <div
-                      key={item.id}
-                      onClick={() => {
-                        setSelectedWeekly(item.id)
-                        setOpenWeekly(false)
-                      }}
-                      className={`p-3 hover:bg-gray-100 cursor-pointer ${selectedWeekly === item.id ? 'bg-gray-50 font-medium' : ''}`}
-                    >
-                      {item.name || item.label}
-                    </div>
-                  )) : <div className="p-3 text-gray-400">No schedules available</div>}
-                </div>
-              )}
+            <div className='flex'>
+              <img src={IconFirstStep} className='object-contain' alt="" />
+              <h3 className="mb-4 mt-4 ml-2 text-[24px] font-extrabold text-[#130E67]">
+                Session Type
+              </h3>
             </div>
 
             <div className="mb-5">
               <div
-                className={`cursor-pointer flex items-center gap-2 ${!selectedWeekly ? 'opacity-50' : ''}`}
-                onClick={() => selectedWeekly && setOpenSlot(!openSlot)}
+                className={`cursor-pointer flex items-center gap-2 ${!selectedSession ? 'opacity-50' : ''}`}
+                onClick={() => selectedSession && setOpenSlot(!openSlot)}
               >
                 <img src={IconSecondStep} className="object-contain" />
                 <h3 className="text-[24px] font-extrabold text-[#8A8A8A] hover:text-[#130E67] transition-colors">
-                  Time Slot
+                  Time Slot{selectedSlot ? `: ${timeSlots.find((t) => t.id === selectedSlot)?.name || ''}` : ''}
                 </h3>
               </div>
               {openSlot && (
@@ -260,33 +270,65 @@ export default function CourseDetailPage() {
                     >
                       {item.name || item.label}
                     </div>
-                  )) : <div className="p-3 text-gray-400">Select a weekly schedule first</div>}
+                  )) : <div className="p-3 text-gray-400">Select a session type first</div>}
                 </div>
               )}
             </div>
 
-            <div className='flex'>
-              <img src={IconFirstStep} className='object-contain' alt="" />
-              <h3 className="mb-4 mt-4 ml-2 text-[24px] font-extrabold text-[#130E67]">
-                Session Type
-              </h3>
+            <div className="mb-5">
+              <div
+                className={`cursor-pointer flex items-center gap-2 ${!selectedSlot ? 'opacity-50' : ''}`}
+                onClick={() => selectedSlot && setOpenWeekly(!openWeekly)}
+              >
+                <img src={IconThirdStep} className="object-contain" />
+                <h3 className="text-[24px] font-extrabold text-[#8A8A8A] hover:text-[#130E67] transition-colors">
+                  Select Weekly Schedule{selectedWeekly ? `: ${weeklySchedules.find((w) => w.id === selectedWeekly)?.name || ''}` : ''}
+                </h3>
+              </div>
+              {openWeekly && (
+                <div className="border rounded-lg mt-2 bg-white overflow-hidden shadow-sm">
+                  {weeklySchedules.length > 0 ? weeklySchedules.map((item) => (
+                    <div
+                      key={item.id}
+                      onClick={() => {
+                        setSelectedWeekly(item.id)
+                        setOpenWeekly(false)
+                      }}
+                      className={`p-3 hover:bg-gray-100 cursor-pointer ${selectedWeekly === item.id ? 'bg-gray-50 font-medium' : ''}`}
+                    >
+                      {item.name || item.label}
+                    </div>
+                  )) : <div className="p-3 text-gray-400">Select a session type and time slot first</div>}
+                </div>
+              )}
             </div>
 
             <div className='flex justify-between mb-5 h-[131px] gap-2'>
               {sessionTypes.length > 0 ? (
                 sessionTypes.map((session) => {
-                  const isSelected = selectedSession?.id === session.id;
+                  const sessionKey = session.sessionType || session.name
+                  const isSelected = (selectedSession?.sessionType || selectedSession?.name) === sessionKey;
                   const isDisabled = (session.availableSeats ?? 1) <= 0;
-                  
-                  const lowerName = session.name.toLowerCase();
-                  let sessionIcon = IconLocation; 
+
+                  const lowerName = String(session.name || '').toLowerCase();
+                  let sessionIcon = IconLocation;
                   if (lowerName.includes('online')) sessionIcon = IconOnline;
-                  if (lowerName.includes('person') || lowerName.includes('group')) sessionIcon = IconGroup;
+                  if (lowerName.includes('person') || lowerName.includes('group') || lowerName.includes('hybrid') || lowerName.includes('in_person') || lowerName.includes('in person')) sessionIcon = IconGroup;
 
                   return (
                     <div
-                      key={session.id}
-                      onClick={() => !isDisabled && setSelectedSession(session)}
+                      key={sessionKey}
+                      onClick={() => {
+                        if (isDisabled) return
+                        setSelectedSession(session)
+                        setSelectedSlot('')
+                        setSelectedWeekly('')
+                        setTimeSlots([])
+                        setWeeklySchedules([])
+                        setFinalSchedule(null)
+                        setOpenSlot(true)
+                        setOpenWeekly(false)
+                      }}
                       className={`flex-1 h-full bg-white rounded-xl shadow-sm flex flex-col items-center justify-center text-center cursor-pointer transition-all border-2
                         ${isSelected ? 'border-[#736BEA] bg-purple-50' : 'border-transparent hover:border-gray-300'}
                         ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}
