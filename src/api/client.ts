@@ -1,7 +1,8 @@
 import axios, { type AxiosError } from 'axios'
 
 const baseURL: string =
-  (import.meta.env.VITE_API_BASE_URL as string | undefined) || 'http://localhost:4000/api'
+  // (import.meta.env.VITE_API_BASE_URL as string | undefined) || 'http://localhost:4000/api'
+  (import.meta.env.VITE_API_BASE_URL as string | undefined) || 'https://lms-backend-fwa0.onrender.com'
 
 export const api = axios.create({
   baseURL,
